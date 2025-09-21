@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Egypt Best Prperties PF analysis</title>
+  <style>
+    :root{
+      --bg:#05060a;
+      --fg:#d9e7ff;
+      --muted:#9fb7ff;
+      --accent:#6ea8ff;
+      --accent2:#9b6bff;
+      --danger:#ff4976;
+      --ok:#42ffb3;
+      --glass:rgba(255,255,255,0.06);
+      --glass-strong:rgba(255,255,255,0.12);
+      --shadow:0 20px 60px rgba(0,0,0,.6), inset 0 0 40px rgba(255,255,255,.04);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--fg);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(110,168,255,.25), transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, rgba(155,107,255,.22), transparent 60%),
+        linear-gradient(180deg, #04050a 0%, #070818 100%);
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+    .card{
+      width:min(780px, 92vw);
+      background:linear-gradient(180deg, var(--glass-strong), var(--glass));
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(14px) saturate(140%);
+      padding:28px;
+      position:relative;
+      overflow:hidden;
+    }
+    .glow{
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(600px 160px at 20% -10%, rgba(110,168,255,.25), transparent 50%),
+        radial-gradient(400px 140px at 120% 0%, rgba(155,107,255,.25), transparent 55%);
+      filter: blur(20px);
+      opacity:.75;
+      pointer-events:none;
+    }
+    h1{
+      margin:0 0 16px 0;
+      font-size: clamp(22px, 4vw, 34px);
+      letter-spacing:.4px;
+      text-shadow:0 0 28px rgba(110,168,255,.35), 0 0 14px rgba(155,107,255,.25);
+    }
+    .note{
+      margin:0 0 22px 0;
+      font-size:14px;
+      color:var(--muted);
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .note .dot{
+      width:10px; height:10px; border-radius:50%;
+      background:conic-gradient(from 0deg, var(--accent), var(--accent2));
+      box-shadow:0 0 12px rgba(110,168,255,.8);
+      margin-top:4px;
+      flex:0 0 10px;
+    }
+    .field{
+      display:flex; gap:12px; align-items:stretch; width:100%;
+      margin:8px 0 18px 0;
+    }
+    input[type="url"]{
+      flex:1;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+      color:var(--fg);
+      padding:16px 16px;
+      font-size:15px;
+      outline:none;
+      transition:.25s border, .25s box-shadow, .25s background;
+      box-shadow:inset 0 0 0 1px rgba(110,168,255,.0), 0 0 0 rgba(0,0,0,0);
+    }
+    input[type="url"]::placeholder{color:rgba(217,231,255,.45)}
+    input[type="url"]:focus{
+      border-color:rgba(110,168,255,.55);
+      box-shadow:0 0 0 6px rgba(110,168,255,.12), inset 0 0 0 1px rgba(110,168,255,.35);
+      background:rgba(255,255,255,.08);
+    }
+    button{
+      position:relative;
+      border:none;
+      border-radius:14px;
+      padding:0 22px;
+      font-weight:600;
+      font-size:15px;
+      cursor:pointer;
+      color:#0b0f1a;
+      background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      box-shadow:0 10px 26px rgba(110,168,255,.35), inset 0 -2px 0 rgba(0,0,0,.15);
+      min-width:132px;
+      transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    button:hover{filter:brightness(1.05)}
+    button:active{transform:translateY(1px)}
+    button[disabled]{opacity:.6; cursor:not-allowed; filter:grayscale(.2)}
+    .status{
+      min-height:22px;
+      font-size:14px;
+      margin:6px 2px 0 2px;
+    }
+    .status.ok{color:var(--ok)}
+    .status.err{color:var(--danger)}
+    .divider{
+      height:1px; width:100%;
+      background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+      margin:18px 0;
+    }
+    .view{
+      font-size:14px;
+      color:var(--muted);
+    }
+    .view a{
+      color:#dff2ff;
+      text-decoration:none;
+      border-bottom:1px dashed rgba(223,242,255,.55);
+      padding-bottom:1px;
+      transition:.2s color, .2s border-color, .2s text-shadow;
+      text-shadow:0 0 10px rgba(110,168,255,.25);
+      word-break:break-all;
+    }
+    .view a:hover{
+      color:#ffffff;
+      border-color:#ffffff;
+      text-shadow:0 0 16px rgba(110,168,255,.45);
+    }
+    .tiny{
+      opacity:.8; font-size:12px; margin-top:10px; color:rgba(217,231,255,.6)
+    }
+    .ring{
+      display:inline-block; width:16px; height:16px; border-radius:50%;
+      border:2px solid rgba(255,255,255,.3); border-top-color:#fff; vertical-align:-3px;
+      animation:spin 1s linear infinite; margin-right:8px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <main class="card" aria-live="polite">
+    <div class="glow" aria-hidden="true"></div>
+    <h1>Egypt Best Properties PF analysis</h1>
+
+    <p class="note"><span class="dot"></span><span>Please make sure your URL is a valid PF search URL containing the word <strong>“search”</strong>.</span></p>
+
+    <form id="pfForm" class="field" novalidate>
+      <input
+        id="urlInput"
+        name="url"
+        type="url"
+        placeholder="Paste your PF search URL (must include the word ‘search’)…"
+        inputmode="url"
+        autocomplete="off"
+        required
+      />
+      <button id="sendBtn" type="submit">Send</button>
+    </form>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <div class="divider"></div>
+
+    <p class="view">
+      To view results please visit:
+      <br />
+      <a href="https://metabase-production-304b.up.railway.app/dashboard/2-pf?tab=4-tab-1&text=&text_1=&text_2=Fouka+Bay" target="_blank" rel="noopener">
+        https://metabase-production-304b.up.railway.app/dashboard/2-pf?tab=4-tab-1&text=&text_1=&text_2=Fouka+Bay
+      </a>
+    </p>
+    <p class="tiny">This page posts a JSON body shaped like <code>{ "url": "…" }</code> to your webhook.</p>
+  </main>
+
+  <script>
+    (function () {
+      const form = document.getElementById('pfForm');
+      const input = document.getElementById('urlInput');
+      const btn = document.getElementById('sendBtn');
+      const statusEl = document.getElementById('status');
+
+      const WEBHOOK = 'https://primary-production-9e01d.up.railway.app/webhook/613e149e-e557-4c3e-b742-cfabf6279119';
+
+      function setStatus(msg, kind){
+        statusEl.textContent = msg || '';
+        statusEl.className = 'status' + (kind ? ' ' + kind : '');
+      }
+
+      function looksLikeValidPF(urlStr){
+        try{
+          const u = new URL(urlStr.trim());
+          return /search/i.test(u.href);
+        }catch{ return false; }
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const urlVal = input.value.trim();
+
+        if(!looksLikeValidPF(urlVal)){
+          setStatus('Please enter a valid PF search URL that contains the word "search".', 'err');
+          input.focus();
+          return;
+        }
+
+        btn.disabled = true;
+        const prevBtnText = btn.textContent;
+        btn.innerHTML = '<span class="ring"></span>Sending…';
+        setStatus('');
+
+        try{
+          const res = await fetch(WEBHOOK, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ url: urlVal })
+          });
+
+          const contentType = res.headers.get('content-type') || '';
+          let payload;
+          if (contentType.includes('application/json')) {
+            payload = await res.json();
+          } else {
+            payload = await res.text();
+          }
+
+          if(!res.ok){
+            setStatus('Failed (' + res.status + '): ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)), 'err');
+          }else{
+            setStatus('Success. Your request was posted.', 'ok');
+          }
+        }catch(err){
+          setStatus('Network error: ' + (err && err.message ? err.message : err), 'err');
+        }finally{
+          btn.disabled = false;
+          btn.textContent = prevBtnText;
+        }
+      });
+
+      // Convenience: submit on Enter even if button isn’t focused.
+      input.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ form.requestSubmit(); }
+      });
+    })();
+  </script>
+</body>
+</html>
