@@ -1,259 +1,615 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Egypt Best Prperties PF analysis</title>
+  <title>Egypt Best Properties Master Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
+    /* ===== Light theme: white bg, red accents, white bars on red cards ===== */
     :root{
-      --bg:#05060a;
-      --fg:#d9e7ff;
-      --muted:#9fb7ff;
-      --accent:#6ea8ff;
-      --accent2:#9b6bff;
-      --danger:#ff4976;
-      --ok:#42ffb3;
-      --glass:rgba(255,255,255,0.06);
-      --glass-strong:rgba(255,255,255,0.12);
-      --shadow:0 20px 60px rgba(0,0,0,.6), inset 0 0 40px rgba(255,255,255,.04);
-      --radius:22px;
+      --bg:#ffffff;
+      --ink:#111827;
+      --muted:#6b7280;
+      --accent:#b91c1c;        /* red */
+      --card:#b91c1c;          /* red cards behind charts */
+      --card-ink:#ffffff;      /* text on cards */
+      --panel:#991b1b;
+      --border:#e5e7eb;
+      --btn:#ffffff;
+      --btn-border:#b91c1c66;
+
+      --chart-ink:#ffffff;     /* axis/legend on red cards */
+      --grid-color:rgba(255,255,255,.18);
+      --bar-color:#ffffff;     /* bars in light mode */
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
-      color:var(--fg);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(110,168,255,.25), transparent 60%),
-        radial-gradient(900px 500px at 110% 10%, rgba(155,107,255,.22), transparent 60%),
-        linear-gradient(180deg, #04050a 0%, #070818 100%);
-      display:grid;
-      place-items:center;
-      padding:24px;
+    /* ===== Dark mode: keep dark UI, make bars blue ===== */
+    body.theme-dark{
+      --bg:#0b0f1a;
+      --ink:#e6edf3;
+      --muted:#94a3b8;
+      --accent:#38bdf8;
+      --card:#121829;
+      --card-ink:#e6edf3;
+      --panel:#0f172a;
+      --border:#334155;
+      --btn:#1e293b;
+      --btn-border:#334155;
+
+      --chart-ink:#e6edf3;
+      --grid-color:rgba(203,213,225,.18);
+      --bar-color:#60a5fa;     /* BLUE bars in dark mode */
     }
-    .card{
-      width:min(780px, 92vw);
-      background:linear-gradient(180deg, var(--glass-strong), var(--glass));
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-      backdrop-filter: blur(14px) saturate(140%);
-      padding:28px;
-      position:relative;
-      overflow:hidden;
+
+    html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell;}
+    .wrap{max-width:1200px;margin:0 auto;padding:0 16px 28px}
+    h1{font-size:22px;margin:0;color:var(--accent)}
+
+    /* Top bar */
+    .topbar{position:sticky;top:0;z-index:9;background:var(--bg);border-bottom:1px solid var(--accent)}
+    .toprow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:28px;height:28px;border-radius:6px;object-fit:cover}
+    .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .toggleMode{background:var(--btn);color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:8px 10px;cursor:pointer}
+
+    /* Controls */
+    .controls{display:flex;gap:10px;align-items:center;margin:12px 0 18px;flex-wrap:wrap}
+    select,button,input{
+      background:var(--btn);
+      color:var(--accent);
+      border:1px solid var(--accent);
+      border-radius:10px;
+      padding:8px 10px
     }
-    .glow{
-      position:absolute; inset:-2px;
-      background:
-        radial-gradient(600px 160px at 20% -10%, rgba(110,168,255,.25), transparent 50%),
-        radial-gradient(400px 140px at 120% 0%, rgba(155,107,255,.25), transparent 55%);
-      filter: blur(20px);
-      opacity:.75;
-      pointer-events:none;
+    .small{color:var(--muted);font-size:12px}
+
+    /* Cards (red) */
+    .card{background:var(--card);color:var(--card-ink);border-radius:16px;padding:16px;margin-bottom:18px;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+    .cardHead{display:flex;justify-content:space-between;align-items:center;margin:0 0 12px}
+    .cardHead h2{font-size:16px;margin:0;color:var(--card-ink)}
+    .toggles{display:flex;gap:8px;align-items:center}
+    canvas{width:100%;height:460px}
+
+    /* Card controls visible in both themes */
+    .card .typeToggle, .card .pngBtn, .card .seeAllBtn, .anChip, .anBtn, .anInput {
+      background:#ffffff; color:#111; border:1px solid rgba(0,0,0,.25); border-radius:10px;
     }
-    h1{
-      margin:0 0 16px 0;
-      font-size: clamp(22px, 4vw, 34px);
-      letter-spacing:.4px;
-      text-shadow:0 0 28px rgba(110,168,255,.35), 0 0 14px rgba(155,107,255,.25);
+    body.theme-dark .card .typeToggle,
+    body.theme-dark .card .pngBtn,
+    body.theme-dark .card .seeAllBtn,
+    body.theme-dark .anChip, body.theme-dark .anBtn, body.theme-dark .anInput{
+      background:#ffffff; color:#111; border:1px solid #e5e7eb;
     }
-    .note{
-      margin:0 0 22px 0;
-      font-size:14px;
-      color:var(--muted);
-      display:flex; gap:10px; align-items:flex-start;
-    }
-    .note .dot{
-      width:10px; height:10px; border-radius:50%;
-      background:conic-gradient(from 0deg, var(--accent), var(--accent2));
-      box-shadow:0 0 12px rgba(110,168,255,.8);
-      margin-top:4px;
-      flex:0 0 10px;
-    }
-    .field{
-      display:flex; gap:12px; align-items:stretch; width:100%;
-      margin:8px 0 18px 0;
-    }
-    input[type="url"]{
-      flex:1;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.18);
-      border-radius:14px;
-      color:var(--fg);
-      padding:16px 16px;
-      font-size:15px;
-      outline:none;
-      transition:.25s border, .25s box-shadow, .25s background;
-      box-shadow:inset 0 0 0 1px rgba(110,168,255,.0), 0 0 0 rgba(0,0,0,0);
-    }
-    input[type="url"]::placeholder{color:rgba(217,231,255,.45)}
-    input[type="url"]:focus{
-      border-color:rgba(110,168,255,.55);
-      box-shadow:0 0 0 6px rgba(110,168,255,.12), inset 0 0 0 1px rgba(110,168,255,.35);
-      background:rgba(255,255,255,.08);
-    }
-    button{
-      position:relative;
-      border:none;
-      border-radius:14px;
-      padding:0 22px;
-      font-weight:600;
-      font-size:15px;
-      cursor:pointer;
-      color:#0b0f1a;
-      background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-      box-shadow:0 10px 26px rgba(110,168,255,.35), inset 0 -2px 0 rgba(0,0,0,.15);
-      min-width:132px;
-      transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
-    }
-    button:hover{filter:brightness(1.05)}
-    button:active{transform:translateY(1px)}
-    button[disabled]{opacity:.6; cursor:not-allowed; filter:grayscale(.2)}
-    .status{
-      min-height:22px;
-      font-size:14px;
-      margin:6px 2px 0 2px;
-    }
-    .status.ok{color:var(--ok)}
-    .status.err{color:var(--danger)}
-    .divider{
-      height:1px; width:100%;
-      background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
-      margin:18px 0;
-    }
-    .view{
-      font-size:14px;
-      color:var(--muted);
-    }
-    .view a{
-      color:#dff2ff;
-      text-decoration:none;
-      border-bottom:1px dashed rgba(223,242,255,.55);
-      padding-bottom:1px;
-      transition:.2s color, .2s border-color, .2s text-shadow;
-      text-shadow:0 0 10px rgba(110,168,255,.25);
-      word-break:break-all;
-    }
-    .view a:hover{
-      color:#ffffff;
-      border-color:#ffffff;
-      text-shadow:0 0 16px rgba(110,168,255,.45);
-    }
-    .tiny{
-      opacity:.8; font-size:12px; margin-top:10px; color:rgba(217,231,255,.6)
-    }
-    .ring{
-      display:inline-block; width:16px; height:16px; border-radius:50%;
-      border:2px solid rgba(255,255,255,.3); border-top-color:#fff; vertical-align:-3px;
-      animation:spin 1s linear infinite; margin-right:8px;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
+    .anBtn{padding:8px 12px; cursor:pointer}
+    .anInput{padding:10px 12px; width:100%}
+    .anRow{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+    .anGrow{flex:1}
+
+    /* See-all hover */
+    .hoverWrap{position:relative}
+    .hoverPanel{position:absolute;top:36px;right:0;width:320px;max-height:320px;overflow:auto;background:var(--panel);border:1px solid rgba(255,255,255,.25);border-radius:12px;padding:10px;opacity:0;pointer-events:none;transition:opacity .12s ease;box-shadow:0 10px 30px rgba(0,0,0,.35);color:#fff}
+    .hoverWrap:hover .hoverPanel{opacity:1;pointer-events:auto}
+    .seeAllBtn{padding:6px 10px}
+    .listline{display:flex;justify-content:space-between;gap:10px;margin:2px 0;font-size:12px}
+    .listlabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+
+    /* Destination cards */
+    .cards{display:grid;grid-template-columns:1fr;gap:16px;margin-top:8px}
+    @media(min-width:900px){.cards{grid-template-columns:1fr 1fr}}
+    @media(min-width:1200px){.cards{grid-template-columns:1fr 1fr 1fr}}
+    .dest{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+    .dest .title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .badge{font-size:12px;padding:2px 8px;border-radius:999px;background:transparent;border:1px solid rgba(255,255,255,.35)}
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)}
+    .chip .cnt{background:#ffffff;color:#b91c1c;border-radius:999px;padding:2px 6px;font-weight:700}
+
+    /* Collapser */
+    .collapser{border:1px dashed var(--accent);border-radius:14px;padding:10px 12px;cursor:pointer}
+    .anWrap{display:none}
+    .anWrap.open{display:block}
+    .statusMsg{font-size:12px;margin-top:6px}
+    .statusOk{color:#a7f3d0}
+    .statusErr{color:#fecaca}
   </style>
 </head>
 <body>
-  <main class="card" aria-live="polite">
-    <div class="glow" aria-hidden="true"></div>
-    <h1>Egypt Best Properties PF analysis</h1>
+  <div class="topbar">
+    <div class="wrap toprow">
+      <div class="brand">
+        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQjyr3njJN9Bs4Oun9PU_jOYJ5SA_VMECGh6w&s" alt="Logo" />
+        <h1>Egypt Best Properties Master Dashboard</h1>
+      </div>
+      <div class="actions">
+        <button id="modeToggle" class="toggleMode" title="Toggle dark mode">Dark mode</button>
+      </div>
+    </div>
+  </div>
 
-    <p class="note"><span class="dot"></span><span>Please make sure your URL is a valid PF search URL containing the word <strong>“search”</strong>.</span></p>
+  <div class="wrap">
+    <div class="controls">
+      <label style="color:var(--ink)">Project filter for Brokers x Project:</label>
+      <select id="projectSelect" style="color:var(--accent)"></select>
+      <button id="resetProject">All projects</button>
+      <button id="refreshBtn">Refresh data</button>
+      <span class="small" id="status" style="color:var(--muted)"></span>
+    </div>
 
-    <form id="pfForm" class="field" novalidate>
-      <input
-        id="urlInput"
-        name="url"
-        type="url"
-        placeholder="Paste your PF search URL (must include the word ‘search’)…"
-        inputmode="url"
-        autocomplete="off"
-        required
-      />
-      <button id="sendBtn" type="submit">Send</button>
-    </form>
+    <!-- NEW: Analysis request opener -->
+    <div class="controls">
+      <button id="openAnalysis" class="collapser">Make New Analysis Request</button>
+    </div>
 
-    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <!-- NEW: Collapsible analysis request card -->
+    <div id="analysisWrap" class="card anWrap" aria-hidden="true">
+      <div class="cardHead" style="margin-bottom:10px">
+        <h2>New Analysis Request</h2>
+        <button id="closeAnalysis" class="typeToggle">Close</button>
+      </div>
 
-    <div class="divider"></div>
+      <div class="small" style="opacity:.95;margin-bottom:10px">
+        .
+      </div>
 
-    <p class="view">
-      To view results please visit:
-      <br />
-      <a href="https://metabase-production-304b.up.railway.app/dashboard/2-pf?tab=4-tab-1&text=&text_1=&text_2=Fouka+Bay" target="_blank" rel="noopener">
-        https://metabase-production-304b.up.railway.app/dashboard/2-pf?tab=4-tab-1&text=&text_1=&text_2=Fouka+Bay
-      </a>
-    </p>
-    <p class="tiny">This page posts a JSON body shaped like <code>{ "url": "…" }</code> to your webhook.</p>
-  </main>
+      <!-- Prefill chips -->
+      <div class="chips" id="prefills" style="margin-bottom:10px">
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=37579&c=1&fu=0&ob=mr">North Coast</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=2255&c=1&fu=0&ob=mr">New Cairo</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=37809&c=1&fu=0&ob=mr">Red Sea</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=20671&c=1&fu=0&ob=mr">6th October</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=40338&c=1&fu=0&ob=mr">Ain Sokhna</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?l=28683&c=1&fu=0&ob=mr">Zayed</button>
+        <button class="anChip" data-url="https://www.propertyfinder.eg/en/search?c=1&fu=0&ob=mr">All</button>
+      </div>
 
-  <script>
-    (function () {
-      const form = document.getElementById('pfForm');
-      const input = document.getElementById('urlInput');
-      const btn = document.getElementById('sendBtn');
-      const statusEl = document.getElementById('status');
+      <!-- Form -->
+      <div class="anRow" id="reqRow">
+        <input id="anInput" class="anInput anGrow" type="url" placeholder="Paste PF search URL (must include “search”)…" inputmode="url" autocomplete="off" />
+        <button id="anSend" class="anBtn">Send</button>
+      </div>
+      <div id="anStatus" class="statusMsg"></div>
 
-      const WEBHOOK = 'https://primary-production-9e01d.up.railway.app/webhook/613e149e-e557-4c3e-b742-cfabf6279119';
+      <div class="small" style="opacity:.85;margin-top:12px">
+      
+        <a style="color:#fff; text-decoration:underline" target="_blank" rel="noopener" href=""></a>
+      </div>
+    </div>
 
-      function setStatus(msg, kind){
-        statusEl.textContent = msg || '';
-        statusEl.className = 'status' + (kind ? ' ' + kind : '');
-      }
+    <!-- Export controls -->
+    <div class="controls">
+      <button id="csvProjects">CSV - Listings by Project</button>
+      <button id="csvLeads">CSV - Leads Destination to Project</button>
+      <button id="zipAll">Download all charts as ZIP</button>
+    </div>
 
-      function looksLikeValidPF(urlStr){
-        try{
-          const u = new URL(urlStr.trim());
-          return /search/i.test(u.href);
-        }catch{ return false; }
-      }
+    <!-- Charts -->
+    <div class="card">
+      <div class="cardHead">
+        <h2>Listings by Project</h2>
+        <div class="toggles">
+          <label class="small" style="color:#fff">Chart:</label>
+          <select data-chart="byProject" class="typeToggle"><option value="bar">Bar</option><option value="pie">Pie</option></select>
+          <button class="pngBtn" data-chart="byProject">PNG</button>
+          <span class="hoverWrap">
+            <button class="seeAllBtn small">See all</button>
+            <div class="hoverPanel" id="seeall-byProject"></div>
+          </span>
+        </div>
+      </div>
+      <canvas id="byProject"></canvas>
+      <div class="small" style="color:#ffe;opacity:.9">Top 15 shown in Bar view. See all shows the rest.</div>
+    </div>
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const urlVal = input.value.trim();
+    <div class="card">
+      <div class="cardHead">
+        <h2>Listings by Property Type</h2>
+        <div class="toggles">
+          <label class="small" style="color:#fff">Chart:</label>
+          <select data-chart="byType" class="typeToggle"><option value="bar">Bar</option><option value="pie">Pie</option></select>
+          <button class="pngBtn" data-chart="byType">PNG</button>
+          <span class="hoverWrap">
+            <button class="seeAllBtn small">See all</button>
+            <div class="hoverPanel" id="seeall-byType"></div>
+          </span>
+        </div>
+      </div>
+      <canvas id="byType"></canvas>
+    </div>
 
-        if(!looksLikeValidPF(urlVal)){
-          setStatus('Please enter a valid PF search URL that contains the word "search".', 'err');
-          input.focus();
-          return;
-        }
+    <div class="card">
+      <div class="cardHead">
+        <h2>Premium Listings by Broker</h2>
+        <div class="toggles">
+          <label class="small" style="color:#fff">Chart:</label>
+          <select data-chart="premiumByBroker" class="typeToggle"><option value="bar">Bar</option><option value="pie">Pie</option></select>
+          <button class="pngBtn" data-chart="premiumByBroker">PNG</button>
+          <span class="hoverWrap">
+            <button class="seeAllBtn small">See all</button>
+            <div class="hoverPanel" id="seeall-premiumByBroker"></div>
+          </span>
+        </div>
+      </div>
+      <canvas id="premiumByBroker"></canvas>
+    </div>
 
-        btn.disabled = true;
-        const prevBtnText = btn.textContent;
-        btn.innerHTML = '<span class="ring"></span>Sending…';
-        setStatus('');
+    <div class="card">
+      <div class="cardHead">
+        <h2>Non Premium Listings by Broker</h2>
+        <div class="toggles">
+          <label class="small" style="color:#fff">Chart:</label>
+          <select data-chart="nonPremiumByBroker" class="typeToggle"><option value="bar">Bar</option><option value="pie">Pie</option></select>
+          <button class="pngBtn" data-chart="nonPremiumByBroker">PNG</button>
+          <span class="hoverWrap">
+            <button class="seeAllBtn small">See all</button>
+            <div class="hoverPanel" id="seeall-nonPremiumByBroker"></div>
+          </span>
+        </div>
+      </div>
+      <canvas id="nonPremiumByBroker"></canvas>
+    </div>
 
-        try{
-          const res = await fetch(WEBHOOK, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ url: urlVal })
-          });
+    <div class="card">
+      <div class="cardHead">
+        <h2>Brokers x Project</h2>
+        <div class="toggles">
+          <span class="small" style="color:#fff;opacity:.85">All projects shows overall broker ranking.</span>
+          <select data-chart="brokersByProject" class="typeToggle"><option value="bar">Bar</option><option value="pie">Pie</option></select>
+          <button class="pngBtn" data-chart="brokersByProject">PNG</button>
+          <span class="hoverWrap">
+            <button class="seeAllBtn small">See all</button>
+            <div class="hoverPanel" id="seeall-brokersByProject"></div>
+          </span>
+        </div>
+      </div>
+      <canvas id="brokersByProject"></canvas>
+    </div>
 
-          const contentType = res.headers.get('content-type') || '';
-          let payload;
-          if (contentType.includes('application/json')) {
-            payload = await res.json();
-          } else {
-            payload = await res.text();
-          }
+    <div class="card">
+      <div class="cardHead">
+        <h2>Leads - Destinations to Top Projects</h2>
+        <div class="toggles">
+          <input id="destSearch" placeholder="Search destination" class="typeToggle" />
+          <select id="destLimit" class="typeToggle"><option value="9">Show 9</option><option value="15">Show 15</option><option value="30">Show 30</option></select>
+        </div>
+      </div>
+      <div id="destCards" class="cards"></div>
+      <div class="small" style="opacity:.9">Client-side aggregation of leadsprojects destination to project.</div>
+    </div>
+  </div>
 
-          if(!res.ok){
-            setStatus('Failed (' + res.status + '): ' + (typeof payload === 'string' ? payload : JSON.stringify(payload)), 'err');
-          }else{
-            setStatus('Success. Your request was posted.', 'ok');
-          }
-        }catch(err){
-          setStatus('Network error: ' + (err && err.message ? err.message : err), 'err');
-        }finally{
-          btn.disabled = false;
-          btn.textContent = prevBtnText;
-        }
-      });
+<script>
+/** CONFIG **/
+const SUPABASE_URL = "https://whmbrguzumyatnslzfsq.supabase.co";
+/* Replace with your anon key (never the service role) */
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndobWJyZ3V6dW15YXRuc2x6ZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzNTE2ODksImV4cCI6MjA2NDkyNzY4OX0.xcSogaAHv8uQzhFgEDZ1niFx8lirLiBRvkPpMF174YM";
 
-      // Convenience: submit on Enter even if button isn’t focused.
-      input.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){ form.requestSubmit(); }
-      });
-    })();
-  </script>
+/** INIT **/
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:false } });
+const S = id => document.getElementById(id);
+const statusEl = S('status');
+
+/** Helpers **/
+const coalesce = v => (v===null||v===undefined||v==='') ? 'Unknown' : v;
+const canon = v => coalesce(v).toString().trim().replace(/\s+/g,' ');
+
+const charts = {};
+const chartTypes = { byProject:'bar', byType:'bar', premiumByBroker:'bar', nonPremiumByBroker:'bar', brokersByProject:'bar' };
+const limits = {
+  byProject: { bar: 15, pie: 12 },
+  byType: { bar: null, pie: 12 },
+  premiumByBroker: { bar: 50, pie: 20 },
+  nonPremiumByBroker: { bar: 50, pie: 20 },
+  brokersByProject: { bar: 80, pie: 20 }
+};
+
+function redPalette(n){
+  const base = ['#fff1f2','#ffe4e6','#fecdd3','#fda4af','#fb7185','#f43f5e','#e11d48','#be123c','#9f1239','#881337'];
+  const out=[]; for(let i=0;i<n;i++) out.push(base[i%base.length]); return out;
+}
+
+function makeChart(ctxId, labels, data, label){
+  if (charts[ctxId]) charts[ctxId].destroy();
+  const type = chartTypes[ctxId] || 'bar';
+
+  let L = labels.slice(), D = data.slice();
+  const lim = limits[ctxId]?.[type] ?? null;
+  if (lim && lim>0){
+    const pairs = L.map((l,i)=>[l,D[i]]).sort((a,b)=>b[1]-a[1]).slice(0, lim);
+    L = pairs.map(p=>p[0]); D = pairs.map(p=>p[1]);
+  }
+
+  const css = (name)=>getComputedStyle(document.body).getPropertyValue(name).trim() || '#ffffff';
+  const tickColor = css('--chart-ink');
+  const gridColor = css('--grid-color');
+  const barColor  = css('--bar-color');
+
+  const ds = (type==='pie')
+    ? [{ label, data:D, backgroundColor:redPalette(D.length), borderColor:'#ffffff22', borderWidth:1 }]
+    : [{ label, data:D, backgroundColor:barColor, borderColor:barColor }];
+
+  const el = S(ctxId).getContext('2d');
+  charts[ctxId] = new Chart(el, {
+    type,
+    data:{ labels:L, datasets:ds },
+    options: type==='pie'
+      ? { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ color:tickColor } } } }
+      : { responsive:true, plugins:{ legend:{ display:false } },
+          scales:{ x:{ ticks:{ color:tickColor }, grid:{ color:gridColor } },
+                   y:{ ticks:{ color:tickColor }, grid:{ color:gridColor } } } }
+  });
+
+  updateSeeAll(ctxId, labels, L, data);
+}
+
+function updateSeeAll(ctxId, fullLabels, shownLabels, fullData){
+  const fullMap = new Map(fullLabels.map((l,i)=>[l, fullData[i]]));
+  const shownSet = new Set(shownLabels);
+  const rest = fullLabels.filter(l=>!shownSet.has(l)).map(l=>[l, fullMap.get(l)]).sort((a,b)=>b[1]-a[1]);
+  const panel = S(`seeall-${ctxId}`);
+  if (!panel) return;
+  panel.innerHTML = rest.length
+    ? `<div class="small" style="margin-bottom:6px;color:#fff;opacity:.85">Others (${rest.length})</div>` +
+      rest.map(([label,val],i)=>`<div class="listline"><span class="listlabel">${i+1}. ${label}</span><span>${val}</span></div>`).join('')
+    : `<div class="small" style="color:#fff">All items are shown.</div>`;
+}
+
+function groupCount(arr, keyFn){
+  const m=new Map();
+  for (const r of arr){ const k=keyFn(r); m.set(k,(m.get(k)||0)+1); }
+  return Array.from(m.entries()).sort((a,b)=>b[1]-a[1]);
+}
+
+async function fetchPaged(table, columns, pageSize=1000){
+  let from=0,to=pageSize-1,out=[],total=0,page=0;
+  while(true){
+    const { data, error } = await sb.from(table).select(columns).range(from,to);
+    if (error) throw error;
+    out.push(...data); total += data.length; page++;
+    statusEl.textContent = `Loading ${table} page ${page} rows ${total}`;
+    if (data.length < pageSize) break;
+    from += pageSize; to += pageSize;
+  }
+  return out;
+}
+
+/** CACHES & STATS **/
+const CACHE = { vLatestChunk:[], latestChunkListings:[], leads:[] };
+const STATS = { byProject:[], byType:[], premiumByBroker:[], nonPremiumByBroker:[], brokersByProject:[], leadsTriples:[] };
+let PROJECTS=[], PROJECT_LABELS=new Map(), currentProject="__ALL__";
+
+/** LOAD & RENDER **/
+async function loadData(){
+  statusEl.textContent = "Loading";
+  const [latestChunkListings, vLatestChunk, leads] = await Promise.all([
+    fetchPaged('latest_chunk_listings','location_specific'),
+    fetchPaged('v_latest_chunk','broker_name,location_specific,is_premium,property_type'),
+    fetchPaged('leadsprojects','location,destination')
+  ]);
+  CACHE.latestChunkListings = latestChunkListings;
+  CACHE.vLatestChunk = vLatestChunk;
+  CACHE.leads = leads;
+  statusEl.textContent = "Loaded";
+}
+
+function buildProjects(){
+  PROJECTS=[]; PROJECT_LABELS.clear();
+  for (const r of CACHE.vLatestChunk){
+    const c = canon(r.location_specific);
+    if (!PROJECT_LABELS.has(c)){ PROJECT_LABELS.set(c,c); PROJECTS.push(c); }
+  }
+  PROJECTS.sort((a,b)=>a.localeCompare(b));
+  const sel = S('projectSelect');
+  sel.innerHTML = [`<option value="__ALL__">All projects</option>`]
+    .concat(PROJECTS.map(p=>`<option value="${p}">${PROJECT_LABELS.get(p)}</option>`)).join('');
+  sel.value = currentProject;
+}
+
+function renderStaticCharts(){
+  STATS.byProject = groupCount(CACHE.latestChunkListings, r => canon(r.location_specific));
+  makeChart('byProject', STATS.byProject.map(d=>d[0]), STATS.byProject.map(d=>d[1]), 'Listings');
+
+  STATS.byType = groupCount(CACHE.vLatestChunk, r => canon(r.property_type));
+  makeChart('byType', STATS.byType.map(d=>d[0]), STATS.byType.map(d=>d[1]), 'Listings');
+
+  const prem = CACHE.vLatestChunk.filter(r => (r.is_premium===1||r.is_premium==='1'||r.is_premium===true));
+  STATS.premiumByBroker = groupCount(prem, r => canon(r.broker_name));
+  makeChart('premiumByBroker', STATS.premiumByBroker.map(d=>d[0]), STATS.premiumByBroker.map(d=>d[1]), 'Premium listings');
+
+  const non = CACHE.vLatestChunk.filter(r => !(r.is_premium===1||r.is_premium==='1'||r.is_premium===true));
+  STATS.nonPremiumByBroker = groupCount(non, r => canon(r.broker_name));
+  makeChart('nonPremiumByBroker', STATS.nonPremiumByBroker.map(d=>d[0]), STATS.nonPremiumByBroker.map(d=>d[1]), 'Non premium listings');
+}
+
+function renderBrokersByProject(){
+  const rows = CACHE.vLatestChunk;
+  const slice = (currentProject==='__ALL__') ? rows : rows.filter(r => canon(r.location_specific)===currentProject);
+  STATS.brokersByProject = groupCount(slice, r => canon(r.broker_name));
+  const label = (currentProject==='__ALL__') ? 'All projects' : `Project: ${PROJECT_LABELS.get(currentProject)||currentProject}`;
+  makeChart('brokersByProject', STATS.brokersByProject.map(d=>d[0]), STATS.brokersByProject.map(d=>d[1]), label);
+}
+
+function buildDestinationCards(){
+  const pair = new Map(); // dest||proj -> count
+  for (const r of CACHE.leads){
+    const dest = canon(r.destination), proj = canon(r.location);
+    const k = dest + '||' + proj;
+    pair.set(k, (pair.get(k)||0)+1);
+  }
+  STATS.leadsTriples = Array.from(pair.entries()).map(([k,c])=>{
+    const [d,p] = k.split('||'); return [d,p,c];
+  }).sort((a,b)=>b[2]-a[2]);
+
+  const destMap = new Map();
+  for (const [d,p,c] of STATS.leadsTriples){
+    if (!destMap.has(d)) destMap.set(d, new Map());
+    const m = destMap.get(d);
+    m.set(p, (m.get(p)||0) + c);
+  }
+  const container = S('destCards');
+  const search = S('destSearch').value?.trim().toLowerCase();
+  const limit = parseInt(S('destLimit').value || '9', 10);
+  const sumCounts = m => Array.from(m.values()).reduce((s,v)=>s+v,0);
+
+  const destinations = Array.from(destMap.keys())
+    .filter(d => !search || d.toLowerCase().includes(search))
+    .sort((a,b)=>{const ta=sumCounts(destMap.get(a)), tb=sumCounts(destMap.get(b)); return tb-ta || a.localeCompare(b);})
+    .slice(0, limit);
+
+  container.innerHTML = '';
+  for (const d of destinations){
+    const m = destMap.get(d);
+    const arr = Array.from(m.entries()).sort((a,b)=>b[1]-a[1]).slice(0, 15);
+    const total = arr.reduce((s, [,c]) => s + c, 0);
+    const card = document.createElement('div');
+    card.className = 'dest';
+    card.innerHTML = `
+      <div class="title">
+        <div style="font-weight:700">${d}</div>
+        <span class="badge">${total} leads</span>
+      </div>
+      <div class="chips">
+        ${arr.map(([proj,c])=>`<span class="chip"><span>${proj}</span><span class="cnt">${c}</span></span>`).join('')}
+      </div>`;
+    container.appendChild(card);
+  }
+}
+
+/** CSV EXPORTS **/
+function downloadCSV(filename, header, rows){
+  const csv = [header.join(',')].concat(rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+S('csvProjects').onclick = ()=> STATS.byProject.length && downloadCSV('listings_by_project.csv',['project','listings'],STATS.byProject);
+S('csvLeads').onclick = ()=> STATS.leadsTriples.length && downloadCSV('leads_destination_project.csv',['destination','project','count'],STATS.leadsTriples);
+
+/** PNG / ZIP EXPORTS **/
+function downloadPNG(chartId, filename){
+  const url = S(chartId).toDataURL('image/png');
+  const a = document.createElement('a'); a.href = url; a.download = filename || `${chartId}.png`; a.click();
+}
+document.querySelectorAll('.pngBtn').forEach(btn=> btn.addEventListener('click', ()=> downloadPNG(btn.dataset.chart, `${btn.dataset.chart}.png`)));
+S('zipAll').onclick = async ()=>{
+  const ids = ['byProject','byType','premiumByBroker','nonPremiumByBroker','brokersByProject'];
+  const zip = new JSZip();
+  ids.forEach(id => zip.file(`${id}.png`, S(id).toDataURL('image/png').split(',')[1], {base64:true}));
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'charts.zip'; a.click(); URL.revokeObjectURL(a.href);
+};
+
+/** NEW — Analysis Request (collapsible) **/
+const WEBHOOK = 'https://primary-production-9e01d.up.railway.app/webhook/613e149e-e557-4c3e-b742-cfabf6279119'; // from your PF analysis tool
+const openBtn = S('openAnalysis');
+const closeBtn = S('closeAnalysis');
+const anWrap  = S('analysisWrap');
+const anInput = S('anInput');
+const anSend  = S('anSend');
+const anStatus= S('anStatus');
+
+function setAnStatus(msg, cls){
+  anStatus.textContent = msg || '';
+  anStatus.className = 'statusMsg ' + (cls || '');
+}
+
+function looksLikeValidPF(urlStr){
+  try{ const u = new URL(urlStr.trim()); return /search/i.test(u.href); }
+  catch{ return false; }
+}
+
+openBtn.addEventListener('click', ()=>{
+  const willOpen = !anWrap.classList.contains('open');
+  anWrap.classList.toggle('open', willOpen);
+  anWrap.setAttribute('aria-hidden', String(!willOpen));
+  openBtn.textContent = willOpen ? 'Hide Analysis Request' : 'Make New Analysis Request';
+  if (willOpen) { setTimeout(()=>anInput?.focus(), 0); }
+});
+closeBtn.addEventListener('click', ()=>{
+  anWrap.classList.remove('open'); anWrap.setAttribute('aria-hidden','true');
+  openBtn.textContent = 'Make New Analysis Request';
+});
+
+document.getElementById('prefills').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-url]');
+  if (!btn) return;
+  anInput.value = btn.dataset.url;
+  anInput.focus();
+  setAnStatus('Prefilled. Click Send when ready.');
+});
+
+anSend.addEventListener('click', async ()=>{
+  const urlVal = (anInput.value || '').trim();
+  if (!looksLikeValidPF(urlVal)){
+    setAnStatus('Please enter a valid PF search URL that contains the word "search".', 'statusErr');
+    anInput.focus();
+    return;
+  }
+  setAnStatus('Sending…');
+  anSend.disabled = true;
+  try{
+    const res = await fetch(WEBHOOK, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: urlVal })
+    });
+    if (!res.ok){
+      const text = await res.text();
+      setAnStatus(`Failed (${res.status}): ${text}`, 'statusErr');
+    }else{
+      setAnStatus('Success. Your request was posted.', 'statusOk');
+    }
+  }catch(err){
+    setAnStatus('Network error: ' + (err?.message || err), 'statusErr');
+  }finally{
+    anSend.disabled = false;
+  }
+});
+
+/** BOOT **/
+async function boot(refetch=true){
+  try{
+    if (refetch) await loadData();
+    buildProjects();
+    renderStaticCharts();
+    renderBrokersByProject();
+    buildDestinationCards();
+    statusEl.textContent = "Ready";
+  }catch(e){ console.error(e); statusEl.textContent = "Error: " + (e.message||e); }
+}
+
+/** EVENTS (existing) **/
+document.querySelectorAll('.typeToggle').forEach(sel=>{
+  sel.addEventListener('change', e=>{
+    const id = e.target.dataset.chart; chartTypes[id] = e.target.value;
+    if (id==='byProject') makeChart('byProject', STATS.byProject.map(d=>d[0]), STATS.byProject.map(d=>d[1]), 'Listings');
+    if (id==='byType') makeChart('byType', STATS.byType.map(d=>d[0]), STATS.byType.map(d=>d[1]), 'Listings');
+    if (id==='premiumByBroker') makeChart('premiumByBroker', STATS.premiumByBroker.map(d=>d[0]), STATS.premiumByBroker.map(d=>d[1]), 'Premium listings');
+    if (id==='nonPremiumByBroker') makeChart('nonPremiumByBroker', STATS.nonPremiumByBroker.map(d=>d[0]), STATS.nonPremiumByBroker.map(d=>d[1]), 'Non premium listings');
+    if (id==='brokersByProject') renderBrokersByProject();
+  });
+});
+S('projectSelect').addEventListener('change', e=>{ currentProject = e.target.value || '__ALL__'; renderBrokersByProject(); });
+S('resetProject').addEventListener('click', ()=>{ currentProject='__ALL__'; S('projectSelect').value='__ALL__'; renderBrokersByProject(); });
+S('refreshBtn').addEventListener('click', ()=>boot(true));
+S('destSearch').addEventListener('input', ()=>buildDestinationCards());
+S('destLimit').addEventListener('change', ()=>buildDestinationCards());
+
+/* Dark mode toggle */
+S('modeToggle').addEventListener('click', ()=>{
+  document.body.classList.toggle('theme-dark');
+  S('modeToggle').textContent = document.body.classList.contains('theme-dark') ? 'Light mode' : 'Dark mode';
+  // repaint to update tick/grid/bar colors
+  makeChart('byProject', STATS.byProject.map(d=>d[0]), STATS.byProject.map(d=>d[1]), 'Listings');
+  makeChart('byType', STATS.byType.map(d=>d[0]), STATS.byType.map(d=>d[1]), 'Listings');
+  makeChart('premiumByBroker', STATS.premiumByBroker.map(d=>d[0]), STATS.premiumByBroker.map(d=>d[1]), 'Premium listings');
+  makeChart('nonPremiumByBroker', STATS.nonPremiumByBroker.map(d=>d[0]), STATS.nonPremiumByBroker.map(d=>d[1]), 'Non premium listings');
+  renderBrokersByProject();
+});
+
+boot(true);
+</script>
 </body>
 </html>
+
