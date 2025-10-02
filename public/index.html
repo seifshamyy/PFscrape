@@ -25,7 +25,7 @@
       --grid-color:rgba(255,255,255,.18);
       --bar-color:#ffffff;     /* bars in light mode */
     }
-    /* ===== Dark mode: keep dark UI, make bars blue ===== */
+    /* ===== Dark mode: dark UI, make bars blue ===== */
     body.theme-dark{
       --bg:#0b0f1a;
       --ink:#e6edf3;
@@ -40,7 +40,7 @@
 
       --chart-ink:#e6edf3;
       --grid-color:rgba(203,213,225,.18);
-      --bar-color:#60a5fa;     /* BLUE bars in dark mode */
+      --bar-color:#60a5fa;     /* blue bars in dark mode */
     }
 
     html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell;}
@@ -107,13 +107,32 @@
     .chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)}
     .chip .cnt{background:#ffffff;color:#b91c1c;border-radius:999px;padding:2px 6px;font-weight:700}
 
-    /* Collapser */
+    /* Collapser (Make New Analysis Request) */
     .collapser{border:1px dashed var(--accent);border-radius:14px;padding:10px 12px;cursor:pointer}
     .anWrap{display:none}
     .anWrap.open{display:block}
     .statusMsg{font-size:12px;margin-top:6px}
     .statusOk{color:#a7f3d0}
     .statusErr{color:#fecaca}
+
+    /* Help tip beside the request button */
+    .helpTip{ position:relative; display:inline-block; }
+    .helpTip summary{
+      cursor:pointer; user-select:none;
+      background:var(--btn); color:var(--accent);
+      border:1px solid var(--accent); border-radius:10px; padding:8px 12px;
+      list-style:none;
+    }
+    .helpTip summary::-webkit-details-marker{ display:none; }
+    .helpCard{
+      position:absolute; right:0; top:calc(100% + 8px);
+      background:var(--card); color:var(--card-ink);
+      border:1px solid rgba(255,255,255,.25); border-radius:12px;
+      padding:12px 14px; width:360px; box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .helpCard ol{ margin:0 0 8px 18px; padding:0; }
+    .helpCard li{ margin:6px 0; }
+    .helpCard p{ margin:8px 0 0; }
   </style>
 </head>
 <body>
@@ -138,12 +157,25 @@
       <span class="small" id="status" style="color:var(--muted)"></span>
     </div>
 
-    <!-- NEW: Analysis request opener -->
+    <!-- Analysis opener row + How to use -->
     <div class="controls">
       <button id="openAnalysis" class="collapser">Make New Analysis Request</button>
+
+      <details id="howTo" class="helpTip">
+        <summary>How to use</summary>
+        <div class="helpCard" role="note" aria-live="polite">
+          <ol>
+            <li>Click <b>Make New Analysis Request</b> and submit a Property Finder search link.</li>
+            <li>Click <b>Refresh data</b> to clear previous results from the dashboard.</li>
+            <li>Wait <b>5–10 minutes</b> for the analysis to complete.</li>
+            <li>Click <b>Refresh data</b> again to load the new analysis.</li>
+          </ol>
+          <p><b>Leads section</b> auto-updates every <b>Sunday</b> automatically.</p>
+        </div>
+      </details>
     </div>
 
-    <!-- NEW: Collapsible analysis request card -->
+    <!-- Collapsible analysis request card -->
     <div id="analysisWrap" class="card anWrap" aria-hidden="true">
       <div class="cardHead" style="margin-bottom:10px">
         <h2>New Analysis Request</h2>
@@ -151,7 +183,7 @@
       </div>
 
       <div class="small" style="opacity:.95;margin-bottom:10px">
-        .
+        Paste a Property Finder search link (must contain the word <b>search</b>), or click a Prefill below, then Send.
       </div>
 
       <!-- Prefill chips -->
@@ -171,11 +203,6 @@
         <button id="anSend" class="anBtn">Send</button>
       </div>
       <div id="anStatus" class="statusMsg"></div>
-
-      <div class="small" style="opacity:.85;margin-top:12px">
-      
-        <a style="color:#fff; text-decoration:underline" target="_blank" rel="noopener" href=""></a>
-      </div>
     </div>
 
     <!-- Export controls -->
@@ -500,8 +527,8 @@ S('zipAll').onclick = async ()=>{
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'charts.zip'; a.click(); URL.revokeObjectURL(a.href);
 };
 
-/** NEW — Analysis Request (collapsible) **/
-const WEBHOOK = 'https://primary-production-9e01d.up.railway.app/webhook/613e149e-e557-4c3e-b742-cfabf6279119'; // from your PF analysis tool
+/** Analysis Request (collapsible) **/
+const WEBHOOK = 'https://primary-production-9e01d.up.railway.app/webhook/613e149e-e557-4c3e-b742-cfabf6279119';
 const openBtn = S('openAnalysis');
 const closeBtn = S('closeAnalysis');
 const anWrap  = S('analysisWrap');
@@ -513,7 +540,6 @@ function setAnStatus(msg, cls){
   anStatus.textContent = msg || '';
   anStatus.className = 'statusMsg ' + (cls || '');
 }
-
 function looksLikeValidPF(urlStr){
   try{ const u = new URL(urlStr.trim()); return /search/i.test(u.href); }
   catch{ return false; }
@@ -567,7 +593,7 @@ anSend.addEventListener('click', async ()=>{
   }
 });
 
-/** BOOT **/
+/** Boot **/
 async function boot(refetch=true){
   try{
     if (refetch) await loadData();
@@ -579,7 +605,7 @@ async function boot(refetch=true){
   }catch(e){ console.error(e); statusEl.textContent = "Error: " + (e.message||e); }
 }
 
-/** EVENTS (existing) **/
+/** Events **/
 document.querySelectorAll('.typeToggle').forEach(sel=>{
   sel.addEventListener('change', e=>{
     const id = e.target.dataset.chart; chartTypes[id] = e.target.value;
@@ -595,6 +621,13 @@ S('resetProject').addEventListener('click', ()=>{ currentProject='__ALL__'; S('p
 S('refreshBtn').addEventListener('click', ()=>boot(true));
 S('destSearch').addEventListener('input', ()=>buildDestinationCards());
 S('destLimit').addEventListener('change', ()=>buildDestinationCards());
+
+/* Close the help tip when clicking outside */
+document.addEventListener('click', (e)=>{
+  const h = document.getElementById('howTo');
+  if (!h) return;
+  if (!h.contains(e.target)) h.removeAttribute('open');
+});
 
 /* Dark mode toggle */
 S('modeToggle').addEventListener('click', ()=>{
@@ -612,4 +645,3 @@ boot(true);
 </script>
 </body>
 </html>
-
